@@ -1,5 +1,6 @@
 use crate::{
-    AssetRegistry, Command, DisplayCommand, FrameOp, Profile, Program, RgbFrame, parse_program,
+    AssetRegistry, Command, DisplayCommand, FrameOp, Profile, Program, RgbFrame, compile_program,
+    parse_program,
 };
 use axum::{
     Json, Router,
@@ -186,8 +187,14 @@ async fn apply(
     let program = parse_program(&req.program)
         .map_err(|e| (StatusCode::UNPROCESSABLE_ENTITY, e.to_string()))?;
     validate_program(profile, &program).map_err(|e| (StatusCode::UNPROCESSABLE_ENTITY, e))?;
-    let frame = render_initial_frame(profile, &assets, values, &program)
-        .map_err(|e| (StatusCode::UNPROCESSABLE_ENTITY, e))?;
+    let script = compile_program(
+        profile,
+        &assets,
+        values,
+        &program,
+        state.data_dir.parent().unwrap_or(&state.data_dir),
+    )
+    .map_err(|e| (StatusCode::UNPROCESSABLE_ENTITY, e))?;
     let display = state.display.as_ref().ok_or_else(|| {
         (
             StatusCode::SERVICE_UNAVAILABLE,
@@ -202,12 +209,14 @@ async fn apply(
                 "display worker stopped".into(),
             )
         })?;
-    display.send(DisplayCommand::Present(frame)).map_err(|_| {
-        (
-            StatusCode::SERVICE_UNAVAILABLE,
-            "display worker stopped".into(),
-        )
-    })?;
+    display
+        .send(DisplayCommand::StartScript(script))
+        .map_err(|_| {
+            (
+                StatusCode::SERVICE_UNAVAILABLE,
+                "display worker stopped".into(),
+            )
+        })?;
     eprintln!("[apply] initial frame sent for {}", req.profile_id);
     let next = DisplayState {
         profile_id: req.profile_id,
@@ -218,6 +227,7 @@ async fn apply(
     Ok(Json(next))
 }
 
+#[allow(dead_code)]
 fn render_initial_frame(
     profile: &Profile,
     assets: &AssetRegistry,

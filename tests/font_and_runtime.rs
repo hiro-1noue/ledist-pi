@@ -31,3 +31,18 @@ fn bdf_font_draws_a_unicode_glyph_and_rejects_missing_one() {
     font.draw("A", &mut frame, 0, 0, [1, 2, 3]).unwrap();
     assert_eq!(frame.pixel(0, 0), Some([1, 2, 3]));
 }
+
+#[test]
+fn shinonome_jis_bdf_resolves_japanese_unicode_text() {
+    let mut font = BdfFont::parse_bdf(include_str!(
+        "../data/fonts/shinonome-mincho-16/shnmk16.bdf"
+    ))
+    .unwrap();
+    font.merge_fallback(
+        BdfFont::parse_bdf(include_str!(
+            "../data/fonts/shinonome-mincho-16/shnm8x16a.bdf"
+        ))
+        .unwrap(),
+    );
+    assert!(font.measure_checked("次は 大崎 A").is_ok());
+}

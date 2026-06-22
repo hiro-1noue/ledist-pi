@@ -11,6 +11,7 @@ hardware = ["dep:rust-hub75-matrix"]
 [dependencies]
 anyhow = "1"
 axum = "0.8"
+encoding_rs = "0.8"
 image = { version = "0.25", default-features = false, features = ["png"] }
 notify = "8"
 rust-hub75-matrix = { git = "https://github.com/tresept/rust-hub75-matrix", rev = "0d0c48ec530b0da2f8d12be8bc22f5b5bc2b7f1e", optional = true }

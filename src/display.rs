@@ -1,9 +1,9 @@
 #[cfg(feature = "hardware")]
 use crate::MatrixSettings;
-use crate::RgbFrame;
+use crate::{RgbFrame, ScriptEvent, ScriptRunner};
 use anyhow::Result;
 use image::{ImageBuffer, Rgb};
-use std::{path::PathBuf, sync::mpsc, thread};
+use std::{path::PathBuf, sync::mpsc, thread, time::Duration};
 
 /// A display backend is used only by its owning display loop.
 ///
@@ -18,6 +18,7 @@ pub trait DisplayBackend {
 pub enum DisplayCommand {
     Present(RgbFrame),
     SetBrightness(u8),
+    StartScript(ScriptRunner),
     Blank,
 }
 
@@ -39,29 +40,39 @@ where
                 return;
             }
         };
-        while let Ok(command) = receiver.recv() {
-            let result = match command {
-                DisplayCommand::Present(frame) => {
-                    eprintln!(
-                        "[display] present request: {}x{}, {} RGB bytes",
-                        frame.width(),
-                        frame.height(),
-                        frame.as_rgb().len()
-                    );
-                    backend.present(&frame)
+        let mut script = None;
+        loop {
+            match receiver.recv_timeout(Duration::from_millis(33)) {
+                Ok(DisplayCommand::StartScript(next)) => {
+                    eprintln!("[display] script started");
+                    script = Some(next);
                 }
-                DisplayCommand::SetBrightness(brightness) => {
-                    eprintln!("[display] brightness request: {brightness}");
-                    backend.set_brightness(brightness)
+                Ok(command) => run_command(&mut *backend, command),
+                Err(mpsc::RecvTimeoutError::Disconnected) => break,
+                Err(mpsc::RecvTimeoutError::Timeout) => {}
+            }
+            if let Some(runner) = &mut script {
+                match runner.tick(std::time::Instant::now()) {
+                    Ok(events) => {
+                        for event in events {
+                            match event {
+                                ScriptEvent::Present(frame) => {
+                                    run_command(&mut *backend, DisplayCommand::Present(frame))
+                                }
+                                ScriptEvent::Brightness(value) => {
+                                    run_command(&mut *backend, DisplayCommand::SetBrightness(value))
+                                }
+                                ScriptEvent::Blank => {
+                                    run_command(&mut *backend, DisplayCommand::Blank)
+                                }
+                            }
+                        }
+                    }
+                    Err(error) => eprintln!("[display] script failed: {error:#}"),
                 }
-                DisplayCommand::Blank => {
-                    eprintln!("[display] blank request");
-                    backend.blank()
+                if runner.is_finished() {
+                    script = None;
                 }
-            };
-            match result {
-                Ok(()) => eprintln!("[display] request completed"),
-                Err(error) => eprintln!("[display] request failed: {error:#}"),
             }
         }
     });
@@ -70,6 +81,33 @@ where
         .map_err(|_| anyhow::anyhow!("display worker stopped during startup"))?
         .map_err(anyhow::Error::msg)?;
     Ok(sender)
+}
+
+fn run_command(backend: &mut dyn DisplayBackend, command: DisplayCommand) {
+    let result = match command {
+        DisplayCommand::Present(frame) => {
+            eprintln!(
+                "[display] present request: {}x{}, {} RGB bytes",
+                frame.width(),
+                frame.height(),
+                frame.as_rgb().len()
+            );
+            backend.present(&frame)
+        }
+        DisplayCommand::SetBrightness(brightness) => {
+            eprintln!("[display] brightness request: {brightness}");
+            backend.set_brightness(brightness)
+        }
+        DisplayCommand::Blank => {
+            eprintln!("[display] blank request");
+            backend.blank()
+        }
+        DisplayCommand::StartScript(_) => return,
+    };
+    match result {
+        Ok(()) => eprintln!("[display] request completed"),
+        Err(error) => eprintln!("[display] request failed: {error:#}"),
+    }
 }
 
 #[derive(Default)]
