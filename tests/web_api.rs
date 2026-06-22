@@ -3,7 +3,7 @@ use axum::{
     http::{Request, StatusCode},
 };
 use ledist_pi::{AppState, Profile, web_router};
-use std::sync::Arc;
+use std::{fs, sync::Arc};
 use tower::ServiceExt;
 
 #[tokio::test]
@@ -39,4 +39,52 @@ async fn invalid_apply_leaves_display_state_unchanged() {
         .unwrap();
     assert_eq!(response.status(), StatusCode::BAD_REQUEST);
     assert!(state.current_state().is_none());
+}
+
+#[tokio::test]
+async fn apply_validates_registered_assets_and_exposes_field_assets() {
+    let data = tempfile::tempdir().unwrap();
+    let train = data.path().join("e233");
+    fs::create_dir_all(train.join("assets/service")).unwrap();
+    image::RgbImage::new(2, 1)
+        .save(train.join("assets/service/local.png"))
+        .unwrap();
+    let profile = Profile::from_toml(
+        r#"
+[profile]
+id='e233'
+name='E233'
+canvas_width=2
+canvas_height=1
+[regions.service]
+x=0
+y=0
+width=2
+height=1
+[[fields]]
+id='service'
+label='Service'
+type='asset'
+asset_dir='assets/service'
+target_region='service'
+required=true
+require_exact_size=true
+"#,
+    )
+    .unwrap();
+    let state = Arc::new(AppState::new(vec![profile]).with_data_dir(data.path()));
+    let app = web_router(state.clone());
+    let assets = app
+        .clone()
+        .oneshot(
+            Request::get("/api/profiles/e233/assets/service")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(assets.status(), StatusCode::OK);
+    let ok = app.oneshot(Request::post("/api/display/apply").header("content-type", "application/json").body(Body::from(r#"{"profile_id":"e233","brightness":20,"values":{"service":"local"},"program":"frame\n set service service\nend"}"#)).unwrap()).await.unwrap();
+    assert_eq!(ok.status(), StatusCode::OK);
+    assert!(state.current_state().is_some());
 }

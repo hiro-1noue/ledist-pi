@@ -24,6 +24,29 @@ height = 1
 }
 
 #[test]
+fn asset_validation_requires_exact_target_size() {
+    let directory = tempfile::tempdir().unwrap();
+    fs::create_dir_all(directory.path().join("assets/service/ja")).unwrap();
+    let image = image::RgbImage::new(2, 1);
+    image
+        .save(directory.path().join("assets/service/ja/local.png"))
+        .unwrap();
+    let registry = AssetRegistry::scan(directory.path()).unwrap();
+    assert!(
+        registry
+            .validate_size("assets/service/ja", "local", 2, 1)
+            .is_ok()
+    );
+    assert!(
+        registry
+            .validate_size("assets/service/ja", "local", 48, 32)
+            .unwrap_err()
+            .to_string()
+            .contains("expected 48x32")
+    );
+}
+
+#[test]
 fn registry_uses_registered_asset_ids_instead_of_request_paths() {
     let directory = tempfile::tempdir().unwrap();
     fs::create_dir_all(directory.path().join("assets/service/ja")).unwrap();

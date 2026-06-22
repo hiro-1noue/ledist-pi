@@ -95,16 +95,24 @@ fn block(lines: &[(usize, &str)], mut i: usize, until_end: bool) -> Result<(Vec<
             ["scroll", region, field] => {
                 commands.push(Command::Scroll((*region).into(), (*field).into()))
             }
-            ["brightness", n] => commands
-                .push(Command::Brightness(n.parse().map_err(|_| {
-                    anyhow::anyhow!("{}行目: 輝度が不正です", line_no + 1)
-                })?)),
+            ["brightness", n] => {
+                let brightness: u8 = n
+                    .parse()
+                    .map_err(|_| anyhow::anyhow!("{}行目: 輝度が不正です", line_no + 1))?;
+                if brightness > 100 {
+                    bail!("{}行目: 輝度は0..100です", line_no + 1);
+                }
+                commands.push(Command::Brightness(brightness));
+            }
             ["blank"] => commands.push(Command::Blank),
             _ => bail!("{}行目: 不明な命令 \"{}\"", line_no + 1, words[0]),
         }
     }
     if until_end {
-        bail!("loopに対応するendがありません");
+        bail!(
+            "{}行目: loopに対応するendがありません",
+            lines.first().map(|(n, _)| n + 1).unwrap_or(1)
+        );
     }
     Ok((commands, i))
 }

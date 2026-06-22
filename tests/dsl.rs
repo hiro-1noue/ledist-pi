@@ -10,6 +10,19 @@ fn parses_atomic_frame_and_field_duration() {
 }
 
 #[test]
+fn rejects_unclosed_nested_loop_with_a_line_number() {
+    let error = parse_program("loop\n  frame\n    clear right\n  end")
+        .unwrap_err()
+        .to_string();
+    assert!(error.contains("1行目"), "{error}");
+}
+
+#[test]
+fn rejects_brightness_outside_the_hardware_range() {
+    assert!(parse_program("brightness 101").is_err());
+}
+
+#[test]
 fn reports_line_for_unknown_statement() {
     assert!(
         parse_program("wat 3s")

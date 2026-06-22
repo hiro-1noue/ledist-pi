@@ -1,4 +1,4 @@
-use crate::{Profile, parse_program};
+use crate::{AssetRegistry, Command, FrameOp, Profile, Program, parse_program};
 use axum::{
     Json, Router,
     extract::{Path, State},
@@ -15,6 +15,7 @@ use std::{
 
 pub struct AppState {
     profiles: BTreeMap<String, Profile>,
+    assets: BTreeMap<String, AssetRegistry>,
     current: Mutex<Option<DisplayState>>,
     data_dir: PathBuf,
 }
@@ -31,12 +32,22 @@ impl AppState {
                 .into_iter()
                 .map(|p| (p.profile.id.clone(), p))
                 .collect(),
+            assets: BTreeMap::new(),
             current: Mutex::new(None),
             data_dir: PathBuf::from("data/trains"),
         }
     }
     pub fn with_data_dir(mut self, data_dir: impl Into<PathBuf>) -> Self {
         self.data_dir = data_dir.into();
+        self.assets = self
+            .profiles
+            .keys()
+            .filter_map(|id| {
+                AssetRegistry::scan(&self.data_dir.join(id))
+                    .ok()
+                    .map(|assets| (id.clone(), assets))
+            })
+            .collect();
         self
     }
     pub fn current_state(&self) -> Option<DisplayState> {
@@ -63,11 +74,31 @@ pub fn web_router(state: Arc<AppState>) -> Router {
         .route("/app.js", get(script))
         .route("/api/profiles", get(list_profiles))
         .route("/api/profiles/{id}", get(profile))
+        .route("/api/profiles/{id}/assets/{field}", get(field_assets))
         .route("/api/profiles/{id}/templates/{template}", get(template))
         .route("/api/display/apply", post(apply))
         .route("/api/display/blank", post(blank))
         .route("/api/display/state", get(display_state))
         .with_state(state)
+}
+async fn field_assets(
+    Path((id, field)): Path<(String, String)>,
+    State(state): State<Arc<AppState>>,
+) -> Result<Json<Vec<String>>, StatusCode> {
+    let profile = state.profiles.get(&id).ok_or(StatusCode::NOT_FOUND)?;
+    let field = profile
+        .fields
+        .iter()
+        .find(|value| value.id == field)
+        .ok_or(StatusCode::NOT_FOUND)?;
+    let directory = field.asset_dir.as_deref().ok_or(StatusCode::NOT_FOUND)?;
+    Ok(Json(
+        state
+            .assets
+            .get(&id)
+            .map(|assets| assets.list(directory))
+            .unwrap_or_default(),
+    ))
 }
 async fn index() -> Html<&'static str> {
     Html(include_str!("../web/index.html"))
@@ -133,8 +164,18 @@ async fn apply(
     if !state.profiles.contains_key(&req.profile_id) {
         return Err((StatusCode::NOT_FOUND, "unknown profile".into()));
     }
-    let _ = req.values;
-    parse_program(&req.program).map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?;
+    let profile = state.profiles.get(&req.profile_id).expect("checked above");
+    let values = req.values.as_object().ok_or_else(|| {
+        (
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "values must be an object".into(),
+        )
+    })?;
+    validate_values(profile, state.assets.get(&req.profile_id), values)
+        .map_err(|e| (StatusCode::UNPROCESSABLE_ENTITY, e))?;
+    let program = parse_program(&req.program)
+        .map_err(|e| (StatusCode::UNPROCESSABLE_ENTITY, e.to_string()))?;
+    validate_program(profile, &program).map_err(|e| (StatusCode::UNPROCESSABLE_ENTITY, e))?;
     let next = DisplayState {
         profile_id: req.profile_id,
         brightness: req.brightness,
@@ -142,6 +183,112 @@ async fn apply(
     };
     *state.current.lock().unwrap() = Some(next.clone());
     Ok(Json(next))
+}
+
+fn validate_values(
+    profile: &Profile,
+    assets: Option<&AssetRegistry>,
+    values: &serde_json::Map<String, serde_json::Value>,
+) -> Result<(), String> {
+    for field in &profile.fields {
+        let value = values.get(&field.id);
+        if field.required
+            && value
+                .and_then(serde_json::Value::as_str)
+                .is_none_or(str::is_empty)
+        {
+            return Err(format!("required field {} is missing", field.id));
+        }
+        let Some(value) = value else { continue };
+        if let (Some(min), Some(number)) = (field.min, value.as_f64())
+            && number < min
+        {
+            return Err(format!("field {} is below minimum", field.id));
+        }
+        if let (Some(max), Some(number)) = (field.max, value.as_f64())
+            && number > max
+        {
+            return Err(format!("field {} is above maximum", field.id));
+        }
+        if field.kind == "select"
+            && !field
+                .options
+                .iter()
+                .any(|option| value.as_str() == Some(&option.value))
+        {
+            return Err(format!("invalid option for {}", field.id));
+        }
+        if field.kind == "asset" {
+            let Some(id) = value.as_str().filter(|value| !value.is_empty()) else {
+                continue;
+            };
+            let directory = field
+                .asset_dir
+                .as_deref()
+                .ok_or_else(|| format!("asset field {} has no asset_dir", field.id))?;
+            let registry = assets
+                .ok_or_else(|| format!("assets for {} are unavailable", profile.profile.id))?;
+            let path = registry
+                .resolve(directory, id)
+                .ok_or_else(|| format!("unknown asset {id} for {}", field.id))?;
+            if field.require_exact_size {
+                let region_id = field
+                    .target_region
+                    .as_deref()
+                    .ok_or_else(|| format!("asset field {} has no target region", field.id))?;
+                let region = profile
+                    .regions
+                    .get(region_id)
+                    .ok_or_else(|| format!("unknown region {region_id}"))?;
+                registry
+                    .validate_size(directory, id, region.width, region.height)
+                    .map_err(|error| format!("{}: {error}", path.display()))?;
+            }
+        }
+    }
+    Ok(())
+}
+fn validate_program(profile: &Profile, program: &Program) -> Result<(), String> {
+    fn commands(profile: &Profile, entries: &[Command]) -> Result<(), String> {
+        for command in entries {
+            match command {
+                Command::Frame(operations) => {
+                    for op in operations {
+                        match op {
+                            FrameOp::Set(region, field) | FrameOp::Scroll(region, field) => {
+                                check_region(profile, region)?;
+                                check_field(profile, field)?;
+                            }
+                            FrameOp::Clear(region) => check_region(profile, region)?,
+                        }
+                    }
+                }
+                Command::Scroll(region, field) => {
+                    check_region(profile, region)?;
+                    check_field(profile, field)?;
+                }
+                Command::WaitField(field) => check_field(profile, field)?,
+                Command::Loop(_, body) => commands(profile, body)?,
+                _ => {}
+            }
+        }
+        Ok(())
+    }
+    fn check_region(profile: &Profile, id: &str) -> Result<(), String> {
+        if profile.regions.contains_key(id) {
+            Ok(())
+        } else {
+            Err(format!("unknown region {id}"))
+        }
+    }
+    fn check_field(profile: &Profile, id: &str) -> Result<(), String> {
+        if profile.fields.iter().any(|field| field.id == id) {
+            Ok(())
+        } else {
+            Err(format!("unknown field {id}"))
+        }
+    }
+    commands(profile, &program.commands)
 }
 async fn blank(State(state): State<Arc<AppState>>) -> StatusCode {
     *state.current.lock().unwrap() = None;

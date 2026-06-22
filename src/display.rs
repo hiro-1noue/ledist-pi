@@ -1,3 +1,5 @@
+#[cfg(feature = "hardware")]
+use crate::MatrixSettings;
 use crate::RgbFrame;
 use anyhow::Result;
 use image::{ImageBuffer, Rgb};
@@ -82,15 +84,20 @@ pub struct MatrixBackend {
 }
 #[cfg(feature = "hardware")]
 impl MatrixBackend {
-    pub fn new(brightness: u8) -> Result<Self> {
+    pub fn new(settings: &MatrixSettings, brightness: u8) -> Result<Self> {
         use rust_hub75_matrix::{Matrix, MatrixConfig, Rp1Backend};
         let matrix = Matrix::new(MatrixConfig {
-            rows: 32,
-            cols: 64,
-            chain_length: 2,
-            parallel: 1,
+            rows: settings.rows as u32,
+            cols: settings.cols as u32,
+            chain_length: settings.chain_length as u32,
+            parallel: settings.parallel as u32,
             brightness,
-            rp1_backend: Rp1Backend::Rio,
+            gpio_slowdown: settings.gpio_slowdown,
+            rp1_backend: if settings.rp1_backend == "pio" {
+                Rp1Backend::Pio
+            } else {
+                Rp1Backend::Rio
+            },
             ..Default::default()
         })?;
         let (width, height) = matrix.dimensions();

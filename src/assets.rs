@@ -63,6 +63,20 @@ impl AssetRegistry {
             image.into_raw(),
         ))
     }
+    pub fn validate_size(
+        &self,
+        directory: &str,
+        id: &str,
+        width: usize,
+        height: usize,
+    ) -> Result<()> {
+        let (actual_width, actual_height, _) = self.load_rgb(directory, id)?;
+        anyhow::ensure!(
+            (actual_width, actual_height) == (width, height),
+            "asset {directory}/{id}: expected {width}x{height}, got {actual_width}x{actual_height}"
+        );
+        Ok(())
+    }
 }
 fn sanitize(value: &str) -> Option<String> {
     let value: String = value
