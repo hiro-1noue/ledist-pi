@@ -3,3 +3,10 @@
 body {
     font-family: "DotGothic16", sans-serif;
 }
+
+button,
+input,
+textarea,
+select {
+  font-family: inherit;
+}
