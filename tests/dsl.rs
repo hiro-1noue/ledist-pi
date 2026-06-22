@@ -29,6 +29,15 @@ fn parses_a_counted_loop() {
 }
 
 #[test]
+fn parses_nested_loop_for_scroll_duration() {
+    let program = parse_program(
+        "loop\n scroll right_bottom scroll_text\n loop\n  wait 3s\n end\n wait scroll_end\nend",
+    )
+    .unwrap();
+    assert!(matches!(program.commands[0], Command::Loop(None, _)));
+}
+
+#[test]
 fn reports_line_for_unknown_statement() {
     assert!(
         parse_program("wat 3s")

@@ -3,7 +3,7 @@ loop
         set service service_ja
         set right destination_full
     end
-    wait 3s
+    wait 5s
 
     frame
         set service service_ja
@@ -12,9 +12,18 @@ loop
     end
     wait 3s
 
-    frame
-        set service service_en
-        set right_top destination_en
+    loop
+        frame
+            set service service_en
+            set right_top destination_en
+        end
+        wait 3s
+
+        frame
+            set service service_ja
+            set right_top destination_ja
+        end
+        wait 3s
     end
     wait scroll_end
 end

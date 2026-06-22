@@ -89,8 +89,20 @@ fn compile_commands(
                     compile_commands(body, profile, assets, values, frame, actions, font)?;
                 }
             }
-            Command::Loop(None, _) => {
-                return Err("無限loopはトップレベルの最後だけに置けます".into());
+            Command::Loop(None, body) => {
+                let mut body_frame = frame.clone();
+                let mut body_actions = Vec::new();
+                compile_commands(
+                    body,
+                    profile,
+                    assets,
+                    values,
+                    &mut body_frame,
+                    &mut body_actions,
+                    font,
+                )?;
+                *frame = body_frame;
+                actions.push(ScriptAction::WhileScroll(Arc::new(body_actions)));
             }
             Command::WaitSeconds(value) => {
                 actions.push(ScriptAction::Wait(Duration::from_secs_f64(*value)))

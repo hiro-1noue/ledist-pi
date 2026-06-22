@@ -26,6 +26,7 @@ pub enum ScriptAction {
     WaitScrollEnd,
     Brightness(u8),
     Blank,
+    WhileScroll(Arc<Vec<ScriptAction>>),
 }
 pub enum ScriptEvent {
     Present(RgbFrame),
@@ -159,6 +160,17 @@ impl ScriptRunner {
                     self.current = RgbFrame::black(self.current.width(), self.current.height());
                     self.scroll = None;
                     events.push(ScriptEvent::Blank);
+                }
+                ScriptAction::WhileScroll(body) => {
+                    if self.scroll.is_some() {
+                        let repeat = body.clone();
+                        self.actions.splice(
+                            self.index..self.index,
+                            body.iter()
+                                .cloned()
+                                .chain(std::iter::once(ScriptAction::WhileScroll(repeat))),
+                        );
+                    }
                 }
             }
         }
