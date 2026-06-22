@@ -101,13 +101,9 @@ async fn field_assets(
         .find(|value| value.id == field)
         .ok_or(StatusCode::NOT_FOUND)?;
     let directory = field.asset_dir.as_deref().ok_or(StatusCode::NOT_FOUND)?;
-    Ok(Json(
-        state
-            .assets
-            .get(&id)
-            .map(|assets| assets.list(directory))
-            .unwrap_or_default(),
-    ))
+    let assets = AssetRegistry::scan(&state.data_dir.join(&id))
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    Ok(Json(assets.list(directory)))
 }
 async fn index() -> Html<&'static str> {
     Html(include_str!("../web/index.html"))
@@ -180,7 +176,9 @@ async fn apply(
             "values must be an object".into(),
         )
     })?;
-    validate_values(profile, state.assets.get(&req.profile_id), values)
+    let assets = AssetRegistry::scan(&state.data_dir.join(&req.profile_id))
+        .map_err(|error| (StatusCode::INTERNAL_SERVER_ERROR, error.to_string()))?;
+    validate_values(profile, Some(&assets), values)
         .map_err(|e| (StatusCode::UNPROCESSABLE_ENTITY, e))?;
     let program = parse_program(&req.program)
         .map_err(|e| (StatusCode::UNPROCESSABLE_ENTITY, e.to_string()))?;

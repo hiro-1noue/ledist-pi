@@ -90,6 +90,43 @@ require_exact_size=true
 }
 
 #[tokio::test]
+async fn field_assets_include_pngs_added_after_server_start() {
+    let data = tempfile::tempdir().unwrap();
+    let train = data.path().join("e233");
+    fs::create_dir_all(train.join("assets/service")).unwrap();
+    let profile = Profile::from_toml(
+        r#"
+[profile]
+id='e233'
+name='E233'
+[[fields]]
+id='service'
+label='Service'
+type='asset'
+asset_dir='assets/service'
+"#,
+    )
+    .unwrap();
+    let state = Arc::new(AppState::new(vec![profile]).with_data_dir(data.path()));
+    image::RgbImage::new(1, 1)
+        .save(train.join("assets/service/new.png"))
+        .unwrap();
+    let app = web_router(state);
+    let response = app
+        .oneshot(
+            Request::get("/api/profiles/e233/assets/service")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let bytes = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    assert_eq!(bytes, "[\"new\"]");
+}
+
+#[tokio::test]
 async fn test_display_endpoint_requires_a_128_by_32_test_png() {
     let data = tempfile::tempdir().unwrap();
     let display = spawn_display_worker(|| Ok(Box::new(NullBackend::default()))).unwrap();
