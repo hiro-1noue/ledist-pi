@@ -19,6 +19,7 @@ loop
             set right_top destination_ja
         end
         wait 3s
+        check scroll
     end
     wait scroll_end
 
