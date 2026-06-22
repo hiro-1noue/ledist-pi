@@ -54,3 +54,19 @@ h1 {
   left: 16px;
   transform: translate(0, -50%);
 }
+
+#message::before {
+  content: "";
+  display: block;
+  width: auto;
+  height: 60%;
+  aspect-ratio: 1 / 1;
+  background-image: url(icons/icon-message.png);
+  background-size: contain;
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+  position: absolute;
+  top: 50%;
+  left: 16px;
+  transform: translate(0, -50%);
+}
