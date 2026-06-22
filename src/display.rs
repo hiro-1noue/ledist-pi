@@ -5,7 +5,11 @@ use anyhow::Result;
 use image::{ImageBuffer, Rgb};
 use std::path::PathBuf;
 
-pub trait DisplayBackend: Send {
+/// A display backend is used only by its owning display loop.
+///
+/// The HUB75 FFI handle is deliberately not `Send`, so commands must be
+/// delivered to that loop rather than moving a backend between threads.
+pub trait DisplayBackend {
     fn present(&mut self, frame: &RgbFrame) -> Result<()>;
     fn set_brightness(&mut self, brightness: u8) -> Result<()>;
     fn blank(&mut self) -> Result<()>;
