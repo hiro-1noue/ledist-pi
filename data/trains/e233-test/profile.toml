@@ -1,6 +1,6 @@
 [profile]
 id = "e233-7000"
-name = "E233系7000番台"
+name = "E233系テスト表示用"
 description = "テスト表示用"
 canvas_width = 128
 canvas_height = 32
