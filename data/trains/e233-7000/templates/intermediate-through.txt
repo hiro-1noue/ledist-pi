@@ -1,0 +1,19 @@
+loop
+    frame
+        set service service_ja
+        set right_top destination_ja
+        set right_bottom next_stop_ja
+    end
+    wait 3s
+    frame
+        set service service_en
+        set right_top destination_en
+        set right_bottom next_stop_en
+    end
+    wait 3s
+    frame
+        set service service_ja
+        set right destination_full
+    end
+    wait 3s
+end

@@ -1,0 +1,100 @@
+[profile]
+id = "e233-7000"
+name = "E233系7000番台"
+description = "埼京線・川越線用"
+canvas_width = 128
+canvas_height = 32
+default_brightness = 40
+default_template = "intermediate-through"
+
+[regions.service]
+x = 0
+y = 0
+width = 48
+height = 32
+[regions.right]
+x = 48
+y = 0
+width = 80
+height = 32
+[regions.right_top]
+x = 48
+y = 0
+width = 80
+height = 16
+[regions.right_bottom]
+x = 48
+y = 16
+width = 80
+height = 16
+
+[[fields]]
+id = "service_ja"
+label = "種別・日本語"
+type = "asset"
+asset_dir = "assets/service/ja"
+target_region = "service"
+required = true
+require_exact_size = true
+[[fields]]
+id = "service_en"
+label = "種別・英語"
+type = "asset"
+asset_dir = "assets/service/en"
+target_region = "service"
+require_exact_size = true
+[[fields]]
+id = "destination_full"
+label = "行先・全体"
+type = "asset"
+asset_dir = "assets/destination/full"
+target_region = "right"
+require_exact_size = true
+[[fields]]
+id = "destination_ja"
+label = "行先・日本語（右上）"
+type = "asset"
+asset_dir = "assets/destination/ja"
+target_region = "right_top"
+require_exact_size = true
+[[fields]]
+id = "destination_en"
+label = "行先・英語（右上）"
+type = "asset"
+asset_dir = "assets/destination/en"
+target_region = "right_top"
+require_exact_size = true
+[[fields]]
+id = "next_stop_ja"
+label = "次停車駅・日本語（右下）"
+type = "asset"
+asset_dir = "assets/next-stop/ja"
+target_region = "right_bottom"
+require_exact_size = true
+[[fields]]
+id = "next_stop_en"
+label = "次停車駅・英語（右下）"
+type = "asset"
+asset_dir = "assets/next-stop/en"
+target_region = "right_bottom"
+require_exact_size = true
+[[fields]]
+id = "scroll_text"
+label = "スクロール文章"
+type = "text"
+default = "この列車は相鉄線へ直通します"
+[[fields]]
+id = "brightness"
+label = "輝度"
+type = "range"
+min = 0
+max = 100
+default = 40
+
+[scroll_defaults]
+font = "shinonome-mincho-16"
+color = "#ffd060"
+speed_px_per_second = 20.0
+start_padding = 80
+end_padding = 80
+repeat = false
