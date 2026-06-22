@@ -8,31 +8,35 @@
   </head>
 
   <body>
-    <h1>LEDist</h1>
-    <label>
-      車種
-      <select id="profile"></select>
-    </label>
-    <label>
-      テンプレート
-      <select id="template"></select>
-    </label>
-    <button id="load" type="button">テンプレートを読み込む</button>
+    <main>
 
-    <p id="status">車種を選択してください。</p>
-    <form id="form"></form>
-    <label>
-      表示シナリオ
-      <textarea id="program" spellcheck="false"></textarea>
-    </label>
+      <h1>LEDist</h1>
+      <label>
+        車種
+        <select id="profile"></select>
+      </label>
+      <label>
+        テンプレート
+        <select id="template"></select>
+      </label>
+      <button id="load" type="button">テンプレートを読み込む</button>
 
-    <div class="">
-      <button id="apply" type="button">表示する</button>
-      <button id="blank" type="button">消灯する</button>
-      <button id="test" type="button">試験表示</button>
-    </div>
+      <p id="status">車種を選択してください。</p>
+      <form id="form"></form>
+      <label>
+        表示シナリオ
+        <textarea id="program" spellcheck="false"></textarea>
+      </label>
 
-    <p id="message"></p>
+      <div class="">
+        <button id="apply" type="button">表示する</button>
+        <button id="blank" type="button">消灯する</button>
+        <button id="test" type="button">試験表示</button>
+      </div>
+
+      <p id="message"></p>
+
+    </main>
     <script src="/app.js"></script>
   </body>
 </html>
