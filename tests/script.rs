@@ -45,3 +45,25 @@ fn scroll_advances_by_elapsed_time_and_then_allows_wait_scroll_end() {
         Some(ScriptEvent::Blank)
     ));
 }
+
+#[test]
+fn infinite_cycle_restarts_after_its_wait() {
+    let mut runner = ScriptRunner::new(
+        1,
+        1,
+        Vec::new(),
+        Some(vec![
+            ScriptAction::Brightness(17),
+            ScriptAction::Wait(Duration::from_secs(1)),
+        ]),
+    );
+    let start = Instant::now();
+    assert!(matches!(
+        runner.tick(start).unwrap().first(),
+        Some(ScriptEvent::Brightness(17))
+    ));
+    assert!(matches!(
+        runner.tick(start + Duration::from_secs(2)).unwrap().first(),
+        Some(ScriptEvent::Brightness(17))
+    ));
+}

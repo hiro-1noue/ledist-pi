@@ -23,6 +23,12 @@ fn rejects_brightness_outside_the_hardware_range() {
 }
 
 #[test]
+fn parses_a_counted_loop() {
+    let program = parse_program("loop 3\n blank\nend").unwrap();
+    assert!(matches!(program.commands[0], Command::Loop(Some(3), _)));
+}
+
+#[test]
 fn reports_line_for_unknown_statement() {
     assert!(
         parse_program("wat 3s")
