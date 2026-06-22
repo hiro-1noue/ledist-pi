@@ -132,6 +132,30 @@ asset_dir='assets/service'
 }
 
 #[tokio::test]
+async fn templates_endpoint_lists_template_ids() {
+    let data = tempfile::tempdir().unwrap();
+    let train = data.path().join("e233");
+    fs::create_dir_all(train.join("templates")).unwrap();
+    fs::write(train.join("templates/standard.txt"), "blank").unwrap();
+    let profile = Profile::from_toml("[profile]\nid='e233'\nname='E233'").unwrap();
+    let app = web_router(Arc::new(
+        AppState::new(vec![profile]).with_data_dir(data.path()),
+    ));
+    let response = app
+        .oneshot(
+            Request::get("/api/profiles/e233/templates")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let bytes = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    assert_eq!(bytes, "[\"standard\"]");
+}
+
+#[tokio::test]
 async fn test_display_endpoint_requires_a_128_by_32_test_png() {
     let data = tempfile::tempdir().unwrap();
     let display = spawn_display_worker(|| Ok(Box::new(NullBackend::default()))).unwrap();

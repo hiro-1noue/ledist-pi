@@ -84,6 +84,7 @@ pub fn web_router(state: Arc<AppState>) -> Router {
         .route("/api/profiles", get(list_profiles))
         .route("/api/profiles/{id}", get(profile))
         .route("/api/profiles/{id}/assets/{field}", get(field_assets))
+        .route("/api/profiles/{id}/templates", get(templates))
         .route("/api/profiles/{id}/templates/{template}", get(template))
         .route("/api/display/apply", post(apply))
         .route("/api/display/test", post(test_display))
@@ -162,6 +163,35 @@ async fn template(
             .join(format!("{template}.txt")),
     )
     .map_err(|_| StatusCode::NOT_FOUND)
+}
+async fn templates(
+    Path(id): Path<String>,
+    State(state): State<Arc<AppState>>,
+) -> Result<Json<Vec<String>>, StatusCode> {
+    if !state.profiles.contains_key(&id) {
+        return Err(StatusCode::NOT_FOUND);
+    }
+    let directory = state.data_dir.join(id).join("templates");
+    let entries = std::fs::read_dir(directory).map_err(|_| StatusCode::NOT_FOUND)?;
+    let mut ids = entries
+        .filter_map(|entry| {
+            entry.ok().and_then(|entry| {
+                entry
+                    .path()
+                    .file_stem()
+                    .and_then(|stem| stem.to_str())
+                    .map(str::to_owned)
+            })
+        })
+        .filter(|id| {
+            !id.is_empty()
+                && id
+                    .chars()
+                    .all(|ch| ch.is_ascii_alphanumeric() || ch == '-' || ch == '_')
+        })
+        .collect::<Vec<_>>();
+    ids.sort();
+    Ok(Json(ids))
 }
 async fn apply(
     State(state): State<Arc<AppState>>,
