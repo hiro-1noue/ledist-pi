@@ -75,15 +75,17 @@ impl ScriptRunner {
         );
         let offset = (now.duration_since(*started).as_secs_f64() * scroll.speed_px_per_second)
             .floor() as isize;
-        let x =
-            scroll.region.x as isize + scroll.region.width as isize + scroll.start_padding as isize
-                - offset;
-        scroll.font.draw(
-            &scroll.text,
-            &mut frame,
-            x,
+        let x = scroll.region.width as isize + scroll.start_padding as isize - offset;
+        let mut layer = RgbFrame::black(scroll.region.width, scroll.region.height);
+        scroll
+            .font
+            .draw(&scroll.text, &mut layer, x, 0, scroll.color)?;
+        frame.blit_rgb(
+            scroll.region.x as isize,
             scroll.region.y as isize,
-            scroll.color,
+            scroll.region.width,
+            scroll.region.height,
+            layer.as_rgb(),
         )?;
         Ok(frame)
     }

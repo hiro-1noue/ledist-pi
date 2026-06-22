@@ -94,7 +94,7 @@ default = 40
 [scroll_defaults]
 font = "shinonome-mincho-16"
 color = "#ffd060"
-speed_px_per_second = 20.0
+speed_px_per_second = 40.0
 start_padding = 80
 end_padding = 80
 repeat = false
