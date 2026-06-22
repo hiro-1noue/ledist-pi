@@ -13,7 +13,7 @@ anyhow = "1"
 axum = "0.8"
 image = { version = "0.25", default-features = false, features = ["png"] }
 notify = "8"
-rust-hub75-matrix = { git = "https://github.com/tresept/rust-hub75-matrix", rev = "3c76e104cad1c0b24b1a1e4b6e24d58b02b98d9d", optional = true }
+rust-hub75-matrix = { git = "https://github.com/tresept/rust-hub75-matrix", rev = "0d0c48ec530b0da2f8d12be8bc22f5b5bc2b7f1e", optional = true }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "2"

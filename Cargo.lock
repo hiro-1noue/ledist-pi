@@ -641,7 +641,7 @@ dependencies = [
 [[package]]
 name = "rust-hub75-matrix"
 version = "0.1.0"
-source = "git+https://github.com/tresept/rust-hub75-matrix?rev=3c76e104cad1c0b24b1a1e4b6e24d58b02b98d9d#3c76e104cad1c0b24b1a1e4b6e24d58b02b98d9d"
+source = "git+https://github.com/tresept/rust-hub75-matrix?rev=0d0c48ec530b0da2f8d12be8bc22f5b5bc2b7f1e#0d0c48ec530b0da2f8d12be8bc22f5b5bc2b7f1e"
 dependencies = [
  "cc",
  "thiserror",

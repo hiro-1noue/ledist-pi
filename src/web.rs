@@ -213,6 +213,10 @@ async fn test_display(
             format!("data/test.png は128x32である必要があります（現在: {width}x{height}）"),
         ));
     }
+    eprintln!(
+        "[test-display] loading {} ({width}x{height})",
+        path.display()
+    );
     let pixels = image::open(&path)
         .map_err(|error| (StatusCode::UNPROCESSABLE_ENTITY, error.to_string()))?
         .to_rgb8()
@@ -237,6 +241,7 @@ async fn test_display(
                 "display worker stopped".into(),
             )
         })?;
+    eprintln!("[test-display] frame sent to display worker");
     Ok(StatusCode::OK)
 }
 

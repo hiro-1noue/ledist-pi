@@ -29,6 +29,7 @@ where
     thread::spawn(move || {
         let mut backend = match create() {
             Ok(backend) => {
+                eprintln!("[display] backend initialized");
                 let _ = ready_sender.send(Ok(()));
                 backend
             }
@@ -39,11 +40,23 @@ where
         };
         while let Ok(command) = receiver.recv() {
             let result = match command {
-                DisplayCommand::Present(frame) => backend.present(&frame),
-                DisplayCommand::Blank => backend.blank(),
+                DisplayCommand::Present(frame) => {
+                    eprintln!(
+                        "[display] present request: {}x{}, {} RGB bytes",
+                        frame.width(),
+                        frame.height(),
+                        frame.as_rgb().len()
+                    );
+                    backend.present(&frame)
+                }
+                DisplayCommand::Blank => {
+                    eprintln!("[display] blank request");
+                    backend.blank()
+                }
             };
-            if let Err(error) = result {
-                eprintln!("display error: {error:#}");
+            match result {
+                Ok(()) => eprintln!("[display] request completed"),
+                Err(error) => eprintln!("[display] request failed: {error:#}"),
             }
         }
     });
@@ -144,6 +157,14 @@ impl MatrixBackend {
             ..Default::default()
         })?;
         let (width, height) = matrix.dimensions();
+        eprintln!(
+            "[matrix] initialized: logical canvas {width}x{height}, panel {}x{}, chain={}, parallel={}, brightness={brightness}, rp1={}",
+            settings.cols,
+            settings.rows,
+            settings.chain_length,
+            settings.parallel,
+            settings.rp1_backend
+        );
         Ok(Self {
             matrix,
             width,
@@ -158,7 +179,9 @@ impl DisplayBackend for MatrixBackend {
             frame.width() == self.width && frame.height() == self.height,
             "frame dimensions do not match HUB75 canvas"
         );
+        eprintln!("[matrix] calling Matrix::present_rgb()");
         self.matrix.present_rgb(frame.as_rgb())?;
+        eprintln!("[matrix] Matrix::present_rgb() succeeded");
         Ok(())
     }
     fn set_brightness(&mut self, brightness: u8) -> Result<()> {
