@@ -95,6 +95,7 @@ pub fn web_router(state: Arc<AppState>) -> Router {
         .route("/api/profiles/{id}/templates/{template}", get(template))
         .route("/api/display/apply", post(apply))
         .route("/api/display/single", post(single))
+        .route("/api/display/stop", post(stop))
         .route("/api/display/test", post(test_display))
         .route("/api/display/blank", post(blank))
         .route("/api/display/state", get(display_state))
@@ -176,6 +177,26 @@ async fn single(
         )
     })?;
     Ok(StatusCode::OK)
+}
+
+async fn stop(State(state): State<Arc<AppState>>) -> Result<StatusCode, (StatusCode, String)> {
+    state
+        .display
+        .as_ref()
+        .ok_or_else(|| {
+            (
+                StatusCode::SERVICE_UNAVAILABLE,
+                "display backend is unavailable".into(),
+            )
+        })?
+        .send(DisplayCommand::StopScript)
+        .map_err(|_| {
+            (
+                StatusCode::SERVICE_UNAVAILABLE,
+                "display worker stopped".into(),
+            )
+        })?;
+    Ok(StatusCode::NO_CONTENT)
 }
 async fn field_assets(
     Path((id, field)): Path<(String, String)>,

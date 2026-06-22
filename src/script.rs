@@ -139,7 +139,9 @@ impl ScriptRunner {
             match action {
                 ScriptAction::Present { frame, scroll } => {
                     self.current = frame;
-                    self.scroll = scroll.map(|s| (s, now));
+                    if let Some(scroll) = scroll {
+                        self.scroll = Some((scroll, now));
+                    }
                     events.push(ScriptEvent::Present(self.render_scroll(now)?));
                 }
                 ScriptAction::Wait(duration) => {

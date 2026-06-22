@@ -84,6 +84,14 @@ label = "スクロール文章"
 type = "text"
 default = "この列車は相鉄線へ直通します"
 [[fields]]
+id = "scroll_speed"
+label = "スクロール速度"
+type = "number"
+min = 1
+max = 200
+default = 80
+unit = "px/秒"
+[[fields]]
 id = "brightness"
 label = "輝度"
 type = "range"
@@ -94,7 +102,7 @@ default = 40
 [scroll_defaults]
 font = "shinonome-mincho-16"
 color = "#ffd060"
-speed_px_per_second = 40.0
+speed_px_per_second = 80.0
 start_padding = 80
 end_padding = 80
 repeat = false

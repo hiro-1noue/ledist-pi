@@ -19,6 +19,7 @@ pub enum DisplayCommand {
     Present(RgbFrame),
     SetBrightness(u8),
     StartScript(ScriptRunner),
+    StopScript,
     Blank,
 }
 
@@ -46,6 +47,10 @@ where
                 Ok(DisplayCommand::StartScript(next)) => {
                     eprintln!("[display] script started");
                     script = Some(next);
+                }
+                Ok(DisplayCommand::StopScript) => {
+                    eprintln!("[display] script stopped; current frame remains visible");
+                    script = None;
                 }
                 Ok(command) => run_command(&mut *backend, command),
                 Err(mpsc::RecvTimeoutError::Disconnected) => break,
@@ -103,6 +108,7 @@ fn run_command(backend: &mut dyn DisplayBackend, command: DisplayCommand) {
             backend.blank()
         }
         DisplayCommand::StartScript(_) => return,
+        DisplayCommand::StopScript => return,
     };
     match result {
         Ok(()) => eprintln!("[display] request completed"),

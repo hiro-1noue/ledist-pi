@@ -177,7 +177,16 @@ fn compile_frame(
                     text: text(values, field_id)?.to_owned(),
                     font: font.ok_or("スクロールフォントを読み込めません")?.clone(),
                     color,
-                    speed_px_per_second: defaults.speed_px_per_second,
+                    speed_px_per_second: values
+                        .get("scroll_speed")
+                        .and_then(serde_json::Value::as_f64)
+                        .or_else(|| {
+                            values
+                                .get("scroll_speed")
+                                .and_then(serde_json::Value::as_str)
+                                .and_then(|value| value.parse().ok())
+                        })
+                        .unwrap_or(defaults.speed_px_per_second),
                     start_padding: defaults.start_padding,
                     end_padding: defaults.end_padding,
                     repeat: defaults.repeat,
