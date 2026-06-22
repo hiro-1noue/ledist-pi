@@ -1,0 +1,8 @@
+loop
+    frame
+        set service service_ja
+        set right_top destination_ja
+        scroll right_bottom scroll_text
+    end
+    wait scroll_end
+end
