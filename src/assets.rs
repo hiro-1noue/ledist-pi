@@ -1,4 +1,5 @@
 use anyhow::Result;
+use image::DynamicImage;
 use std::{
     collections::BTreeMap,
     fs,
@@ -49,6 +50,18 @@ impl AssetRegistry {
             .get(directory)
             .map(|x| x.keys().cloned().collect())
             .unwrap_or_default()
+    }
+    pub fn load_rgb(&self, directory: &str, id: &str) -> Result<(usize, usize, Vec<u8>)> {
+        let path = self
+            .resolve(directory, id)
+            .ok_or_else(|| anyhow::anyhow!("unknown asset \"{id}\""))?;
+        let image: DynamicImage = image::open(path)?;
+        let image = image.to_rgb8();
+        Ok((
+            image.width() as usize,
+            image.height() as usize,
+            image.into_raw(),
+        ))
     }
 }
 fn sanitize(value: &str) -> Option<String> {
