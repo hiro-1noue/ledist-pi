@@ -82,7 +82,7 @@ require_exact_size = true
 id = "scroll_text"
 label = "スクロール文章"
 type = "text"
-default = "この列車は相鉄線へ直通します"
+default = "停車駅：品川シーサイド、大井町、大崎、渋谷、新宿"
 [[fields]]
 id = "scroll_speed"
 label = "スクロール速度"
