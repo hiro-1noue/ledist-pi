@@ -11,6 +11,23 @@ pub struct Profile {
     pub fields: Vec<Field>,
     #[serde(default)]
     pub scroll_defaults: Option<ScrollDefaults>,
+    #[serde(default)]
+    pub e233: Option<E233Config>,
+}
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct E233Config {
+    #[serde(default = "default_page_seconds")]
+    pub page_seconds: f64,
+    pub assets: BTreeMap<String, E233AssetGroup>,
+}
+fn default_page_seconds() -> f64 {
+    3.0
+}
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct E233AssetGroup {
+    pub label: String,
+    #[serde(default)]
+    pub directories: BTreeMap<String, Vec<String>>,
 }
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ProfileMeta {
