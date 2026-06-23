@@ -6,44 +6,38 @@
     <title>LEDist</title>
     <link rel="stylesheet" href="style.css">
   </head>
-
   <body>
     <main>
-
       <h1>LEDist</h1>
-
-      <label>
-        車種
-        <select id="profile"></select>
-      </label>
-
-      <label>
-        テンプレート
-        <select id="template"></select>
-      </label>
-
-      <button id="load" type="button">テンプレートを読み込む</button>
-
-      <p id="status" role="status">車種を選択してください。</p>
-
-      <form id="form"></form>
-
-      <label>
-        表示シナリオ
-        <textarea id="program" spellcheck="false"></textarea>
-      </label>
-
-      <div class="view">
-        <button id="apply" type="button">表示する</button>
-        <button id="stop" type="button">停止する</button>
-        <button id="blank" type="button">消灯する</button>
-        <button id="test" type="button">テストパターンの表示</button>
+      <div class="layout">
+        <div class="col-left">
+          <label>
+            車種
+            <select id="profile"></select>
+          </label>
+          <label>
+            テンプレート
+            <select id="template"></select>
+          </label>
+          <button id="load" type="button">テンプレートを読み込む</button>
+          <p id="status" role="status">車種を選択してください。</p>
+          <form id="form"></form>
+          <div class="view">
+            <button id="apply" type="button">表示する</button>
+            <button id="stop" type="button">停止する</button>
+            <button id="blank" type="button">消灯する</button>
+            <button id="test" type="button">テストパターンの表示</button>
+          </div>
+          <p id="message" role="status" aria-live="polite">-</p>
+        </div>
+        <div class="col-right">
+          <label>
+            表示シナリオ
+            <textarea id="program" spellcheck="false"></textarea>
+          </label>
+        </div>
       </div>
-
-      <p id="message" role="status" aria-live="polite">-</p>
-
     </main>
-
     <script src="/app.js"></script>
   </body>
 </html>

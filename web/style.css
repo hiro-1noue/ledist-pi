@@ -1,14 +1,11 @@
 @import url('https://fonts.googleapis.com/css2?family=DotGothic16&family=Orbitron:wght@400..900&display=swap');
-
 :root {
   --black: #222;
   --white: #ddd;
 }
-
 html {
   box-sizing: border-box;
 }
-
 body {
   font-family: "DotGothic16", sans-serif;
   background-color: var(--white);
@@ -16,35 +13,37 @@ body {
   margin: 0;
   padding: 10px 40px;
   min-height: 100dvh;
+  overflow: hidden;
 }
-
 button,
 input,
 textarea,
 select {
   font-family: inherit;
 }
-
 main {
   max-width: 768px;
   margin: 0 auto;
   padding: 0 24px;
 }
-
-
 h1 {
+  margin: 8px;
   text-align: center;
   font-weight: bold;
   font-size: 2.5em;
 }
-
 button {
   border: var(--black) 1px solid;
   border-radius: 4px;
   padding: 4px 8px;
   background-color: var(--white);
 }
-
+select {
+  width: 64px;
+  border-radius: 4px;
+  background-color: var(--white);
+  border: var(--black) 1px solid;
+}
 #status, #message {
   background-color: var(--black);
   color: var(--white);
@@ -52,7 +51,6 @@ button {
   border-radius: 4px;
   position: relative;
 }
-
 #status::before {
   content: ">_";
   display: block;
@@ -61,7 +59,6 @@ button {
   left: 16px;
   transform: translate(0, -50%);
 }
-
 #message::before {
   content: "";
   display: block;
@@ -77,19 +74,90 @@ button {
   left: 16px;
   transform: translate(0, -50%);
 }
-
 #program {
   width: 100%;
   height: auto;
-  aspect-ratio: 4 / 3;
+  max-height: 320px;
+  aspect-ratio: 16 / 9;
   border-radius: 4px;
   border: var(--black) 1px solid;
 }
-
 .view {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
   margin-top: 16px;
+}
+
+.layout,
+.col-left,
+.col-right {
+  display: contents;
+}
+
+@media (min-width: 900px) {
+  body {
+    height: 100dvh;
+    padding: 10px 24px;
+  }
+
+  main {
+    max-width: 100%;
+    height: calc(100dvh - 20px);
+    display: flex;
+    flex-direction: column;
+  }
+
+  main > h1 {
+    flex-shrink: 0;
+  }
+
+  .layout {
+    display: flex;
+    gap: 24px;
+    flex: 1;
+    min-height: 0;
+  }
+
+  .col-left {
+    display: flex;
+    margin-top: 1em;
+    flex-direction: column;
+    gap: 8px;
+    flex: 0 0 320px;
+    overflow-y: auto;
+  }
+
+  .col-left .view{
+    flex-flow: column;
+    align-items: flex-start;
+  }
+
+  button {
+    width: 100%;
+  }
+
+  .col-right {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    height: 90%;
+  }
+
+  .col-right label {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+  }
+
+  #program {
+    flex: 1;
+    height: 100%;
+    max-height: none;
+    aspect-ratio: unset;
+    resize: none;
+  }
 }
