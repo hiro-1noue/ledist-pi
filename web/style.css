@@ -14,7 +14,7 @@ body {
   background-color: var(--white);
   color: var(--black);
   margin: 0;
-  padding: 40px;
+  padding: 10px 40px;
   min-height: 100dvh;
 }
 
@@ -39,9 +39,10 @@ h1 {
 }
 
 button {
-  border: none;
+  border: var(--black) 1px solid;
   border-radius: 4px;
-  padding: 4px;
+  padding: 4px 8px;
+  background-color: var(--white);
 }
 
 #status, #message {
@@ -77,9 +78,18 @@ button {
   transform: translate(0, -50%);
 }
 
+#program {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 4 / 3;
+  border-radius: 4px;
+  border: var(--black) 1px solid;
+}
+
 .view {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
+  margin-top: 16px;
 }
