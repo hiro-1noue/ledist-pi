@@ -8,6 +8,16 @@ pub struct RgbFrame {
 }
 
 impl RgbFrame {
+    pub fn from_rgb(width: usize, height: usize, pixels: Vec<u8>) -> Result<Self> {
+        if pixels.len() != width * height * 3 {
+            bail!("RGB pixel count does not match dimensions");
+        }
+        Ok(Self {
+            width,
+            height,
+            pixels,
+        })
+    }
     pub fn black(width: usize, height: usize) -> Self {
         Self::solid(width, height, [0, 0, 0])
     }

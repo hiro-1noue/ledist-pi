@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>LEDist</title> 
+    <title>LEDist</title>
     <link rel="stylesheet" href="style.css">
   </head>
 
@@ -11,18 +11,23 @@
     <main>
 
       <h1>LEDist</h1>
+
       <label>
         車種
         <select id="profile"></select>
       </label>
+
       <label>
         テンプレート
         <select id="template"></select>
       </label>
+
       <button id="load" type="button">テンプレートを読み込む</button>
 
-      <p id="status">車種を選択してください。</p>
+      <p id="status" role="status">車種を選択してください。</p>
+
       <form id="form"></form>
+
       <label>
         表示シナリオ
         <textarea id="program" spellcheck="false"></textarea>
@@ -30,13 +35,15 @@
 
       <div class="view">
         <button id="apply" type="button">表示する</button>
+        <button id="stop" type="button">停止する</button>
         <button id="blank" type="button">消灯する</button>
-        <button id="test" type="button">試験表示</button>
+        <button id="test" type="button">テストパターンの表示</button>
       </div>
 
-      <p id="message">-</p>
+      <p id="message" role="status" aria-live="polite">-</p>
 
     </main>
+
     <script src="/app.js"></script>
   </body>
 </html>

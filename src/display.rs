@@ -1,9 +1,14 @@
 #[cfg(feature = "hardware")]
 use crate::MatrixSettings;
-use crate::RgbFrame;
+use crate::{RgbFrame, ScriptEvent, ScriptRunner};
 use anyhow::Result;
-use image::{ImageBuffer, Rgb};
-use std::path::PathBuf;
+use image::{AnimationDecoder, ImageBuffer, Rgb};
+use std::{
+    path::{Path, PathBuf},
+    sync::mpsc,
+    thread,
+    time::{Duration, Instant},
+};
 
 /// A display backend is used only by its owning display loop.
 ///
@@ -13,6 +18,174 @@ pub trait DisplayBackend {
     fn present(&mut self, frame: &RgbFrame) -> Result<()>;
     fn set_brightness(&mut self, brightness: u8) -> Result<()>;
     fn blank(&mut self) -> Result<()>;
+}
+
+pub enum DisplayCommand {
+    Present(RgbFrame),
+    SetBrightness(u8),
+    StartScript(ScriptRunner),
+    StartGif(GifRunner),
+    StopScript,
+    Blank,
+}
+
+pub struct GifRunner {
+    frames: Vec<(RgbFrame, Duration)>,
+    index: usize,
+    next: Instant,
+}
+impl GifRunner {
+    pub fn load(path: &Path, width: usize, height: usize) -> Result<Self> {
+        let decoder = image::codecs::gif::GifDecoder::new(std::io::BufReader::new(
+            std::fs::File::open(path)?,
+        ))?;
+        let frames = decoder.into_frames().collect_frames()?;
+        anyhow::ensure!(!frames.is_empty(), "GIFにフレームがありません");
+        let mut output = Vec::with_capacity(frames.len());
+        for frame in frames {
+            let delay = frame_delay(&frame.delay());
+            let image = frame.into_buffer();
+            anyhow::ensure!(
+                (image.width() as usize, image.height() as usize) == (width, height),
+                "GIFの全フレームは{width}x{height}である必要があります"
+            );
+            let mut rgb = Vec::with_capacity(width * height * 3);
+            for pixel in image.pixels() {
+                rgb.extend_from_slice(&pixel.0[..3]);
+            }
+            output.push((RgbFrame::from_rgb(width, height, rgb)?, delay));
+        }
+        Ok(Self {
+            frames: output,
+            index: 0,
+            next: Instant::now(),
+        })
+    }
+    fn tick(&mut self, now: Instant) -> Option<RgbFrame> {
+        if now < self.next {
+            return None;
+        }
+        let (frame, delay) = &self.frames[self.index];
+        self.next = now + *delay;
+        self.index = (self.index + 1) % self.frames.len();
+        Some(frame.clone())
+    }
+}
+fn frame_delay(delay: &image::Delay) -> Duration {
+    let (numerator, denominator) = delay.numer_denom_ms();
+    Duration::from_secs_f64((numerator as f64 / denominator.max(1) as f64) / 1000.0)
+        .max(Duration::from_millis(10))
+}
+
+pub fn spawn_display_worker<F>(create: F) -> anyhow::Result<mpsc::Sender<DisplayCommand>>
+where
+    F: FnOnce() -> Result<Box<dyn DisplayBackend>> + Send + 'static,
+{
+    let (sender, receiver) = mpsc::channel();
+    let (ready_sender, ready_receiver) = mpsc::sync_channel(1);
+    thread::spawn(move || {
+        let mut backend = match create() {
+            Ok(backend) => {
+                eprintln!("[display] backend initialized");
+                let _ = ready_sender.send(Ok(()));
+                backend
+            }
+            Err(error) => {
+                let _ = ready_sender.send(Err(error.to_string()));
+                return;
+            }
+        };
+        let mut script = None;
+        let mut gif = None;
+        loop {
+            match receiver.recv_timeout(Duration::from_millis(33)) {
+                Ok(DisplayCommand::StartScript(next)) => {
+                    eprintln!("[display] script started");
+                    script = Some(next);
+                    gif = None;
+                }
+                Ok(DisplayCommand::StartGif(next)) => {
+                    eprintln!("[display] GIF playback started");
+                    script = None;
+                    gif = Some(next);
+                }
+                Ok(DisplayCommand::StopScript) => {
+                    eprintln!("[display] script stopped; current frame remains visible");
+                    script = None;
+                    gif = None;
+                }
+                Ok(command) => {
+                    script = None;
+                    gif = None;
+                    run_command(&mut *backend, command)
+                }
+                Err(mpsc::RecvTimeoutError::Disconnected) => break,
+                Err(mpsc::RecvTimeoutError::Timeout) => {}
+            }
+            if let Some(runner) = &mut script {
+                match runner.tick(std::time::Instant::now()) {
+                    Ok(events) => {
+                        for event in events {
+                            match event {
+                                ScriptEvent::Present(frame) => {
+                                    run_command(&mut *backend, DisplayCommand::Present(frame))
+                                }
+                                ScriptEvent::Brightness(value) => {
+                                    run_command(&mut *backend, DisplayCommand::SetBrightness(value))
+                                }
+                                ScriptEvent::Blank => {
+                                    run_command(&mut *backend, DisplayCommand::Blank)
+                                }
+                            }
+                        }
+                    }
+                    Err(error) => eprintln!("[display] script failed: {error:#}"),
+                }
+                if runner.is_finished() {
+                    script = None;
+                }
+            }
+            if let Some(runner) = &mut gif
+                && let Some(frame) = runner.tick(Instant::now())
+            {
+                run_command(&mut *backend, DisplayCommand::Present(frame));
+            }
+        }
+    });
+    ready_receiver
+        .recv()
+        .map_err(|_| anyhow::anyhow!("display worker stopped during startup"))?
+        .map_err(anyhow::Error::msg)?;
+    Ok(sender)
+}
+
+fn run_command(backend: &mut dyn DisplayBackend, command: DisplayCommand) {
+    let result = match command {
+        DisplayCommand::Present(frame) => {
+            eprintln!(
+                "[display] present request: {}x{}, {} RGB bytes",
+                frame.width(),
+                frame.height(),
+                frame.as_rgb().len()
+            );
+            backend.present(&frame)
+        }
+        DisplayCommand::SetBrightness(brightness) => {
+            eprintln!("[display] brightness request: {brightness}");
+            backend.set_brightness(brightness)
+        }
+        DisplayCommand::Blank => {
+            eprintln!("[display] blank request");
+            backend.blank()
+        }
+        DisplayCommand::StartScript(_) => return,
+        DisplayCommand::StartGif(_) => return,
+        DisplayCommand::StopScript => return,
+    };
+    match result {
+        Ok(()) => eprintln!("[display] request completed"),
+        Err(error) => eprintln!("[display] request failed: {error:#}"),
+    }
 }
 
 #[derive(Default)]
@@ -105,6 +278,14 @@ impl MatrixBackend {
             ..Default::default()
         })?;
         let (width, height) = matrix.dimensions();
+        eprintln!(
+            "[matrix] initialized: logical canvas {width}x{height}, panel {}x{}, chain={}, parallel={}, brightness={brightness}, rp1={}",
+            settings.cols,
+            settings.rows,
+            settings.chain_length,
+            settings.parallel,
+            settings.rp1_backend
+        );
         Ok(Self {
             matrix,
             width,
@@ -119,7 +300,9 @@ impl DisplayBackend for MatrixBackend {
             frame.width() == self.width && frame.height() == self.height,
             "frame dimensions do not match HUB75 canvas"
         );
+        eprintln!("[matrix] calling Matrix::present_rgb()");
         self.matrix.present_rgb(frame.as_rgb())?;
+        eprintln!("[matrix] Matrix::present_rgb() succeeded");
         Ok(())
     }
     fn set_brightness(&mut self, brightness: u8) -> Result<()> {
